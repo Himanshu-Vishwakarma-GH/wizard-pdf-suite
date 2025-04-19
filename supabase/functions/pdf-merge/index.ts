@@ -1,7 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.11.338/build/pdf.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { PDFDocument } from "https://cdn.skypack.dev/pdf-lib@1.17.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -33,12 +33,42 @@ serve(async (req) => {
       })
     );
 
-    // TODO: Implement actual PDF merging logic
-    // For now, just return a placeholder response
+    // Implement PDF merging using pdf-lib
+    const mergedPdf = await PDFDocument.create();
+    
+    for (const pdfFile of pdfFiles) {
+      const pdfDoc = await PDFDocument.load(pdfFile);
+      const copiedPages = await mergedPdf.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      copiedPages.forEach((page) => {
+        mergedPdf.addPage(page);
+      });
+    }
+    
+    const mergedPdfBytes = await mergedPdf.save();
+    const mergedPdfBuffer = new Uint8Array(mergedPdfBytes);
+    
+    // Upload the merged PDF back to Supabase storage
+    const timestamp = new Date().getTime();
+    const mergedFilePath = `merged/merged_${timestamp}.pdf`;
+    
+    const { data, error } = await supabase.storage
+      .from('pdfs')
+      .upload(mergedFilePath, mergedPdfBuffer, {
+        contentType: 'application/pdf',
+        cacheControl: '3600',
+      });
+      
+    if (error) throw error;
+    
+    // Get the public URL for the merged PDF
+    const { data: { publicUrl } } = supabase.storage
+      .from('pdfs')
+      .getPublicUrl(mergedFilePath);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        resultUrl: 'https://placeholder-merged-pdf-url' 
+        resultUrl: publicUrl 
       }), 
       { 
         headers: { 
