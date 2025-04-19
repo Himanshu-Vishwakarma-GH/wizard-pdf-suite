@@ -1,8 +1,8 @@
 
-import { useEffect, useRef } from 'react';
+import * as React from 'react';
 
 const Hero = () => {
-  const startButtonRef = useRef<HTMLAnchorElement>(null);
+  const startButtonRef = React.useRef<HTMLAnchorElement>(null);
   
   const scrollToTools = () => {
     document.getElementById('tools-section')?.scrollIntoView({ 
@@ -11,7 +11,7 @@ const Hero = () => {
   };
 
   // Add a subtle wave animation to the background
-  useEffect(() => {
+  React.useEffect(() => {
     const createWaveAnimation = () => {
       // Only run this effect on client-side
       if (typeof window === 'undefined') return;
