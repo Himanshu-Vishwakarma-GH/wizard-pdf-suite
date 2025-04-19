@@ -6,3 +6,13 @@ verify_jwt = false
 
 [functions.pdf-compress]
 verify_jwt = false
+
+[functions.pdf-split]
+verify_jwt = false
+
+[functions.pdf-watermark]
+verify_jwt = false
+
+[functions.pdf-rotate]
+verify_jwt = false
+
