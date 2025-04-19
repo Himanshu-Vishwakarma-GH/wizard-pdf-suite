@@ -1,3 +1,4 @@
+
 import { Link } from 'react-router-dom';
 import { FileText, Scissors, FileDown, RotateCw, Droplet, Lock, Unlock, Merge, File } from 'lucide-react';
 
@@ -16,16 +17,16 @@ const ToolCard = ({ title, description, icon, path }: ToolCardProps) => {
     >
       <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-full mb-4 
                     group-hover:bg-primary/20 transition-all duration-300">
-        <div className="text-primary neon-pulse">
+        <div className="text-primary">
           {icon}
         </div>
       </div>
-      <h3 className="text-xl font-semibold mb-2 neon-text">{title}</h3>
+      <h3 className="text-xl font-semibold mb-2 text-foreground/90">{title}</h3>
       <p className="text-muted-foreground text-center mb-4 transition-colors duration-300 
                   group-hover:text-foreground">
         {description}
       </p>
-      <div className="mt-auto neon-border px-4 py-2 rounded-lg opacity-0 transform translate-y-2 
+      <div className="mt-auto border border-primary/30 px-4 py-2 rounded-lg opacity-0 transform translate-y-2 
                     transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
         Open Tool
       </div>
