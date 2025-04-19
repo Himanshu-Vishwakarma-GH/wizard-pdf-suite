@@ -1,8 +1,8 @@
-
 import * as React from 'react';
+import { Button } from "@/components/ui/button";
 
 const Hero = () => {
-  const startButtonRef = React.useRef<HTMLAnchorElement>(null);
+  const startButtonRef = React.useRef<HTMLButtonElement>(null);
   
   const scrollToTools = () => {
     document.getElementById('tools-section')?.scrollIntoView({ 
@@ -10,13 +10,9 @@ const Hero = () => {
     });
   };
 
-  // Add a subtle wave animation to the background
   React.useEffect(() => {
     const createWaveAnimation = () => {
-      // Only run this effect on client-side
       if (typeof window === 'undefined') return;
-      
-      // No implementation needed for now - could add canvas wave animation later
     };
     
     createWaveAnimation();
@@ -24,7 +20,6 @@ const Hero = () => {
 
   return (
     <section className="relative pt-20 pb-24 overflow-hidden">
-      {/* Background with subtle pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-primary/10 -z-10" />
       <div className="absolute inset-0 opacity-30 bg-[radial-gradient(#6EC1E4_1px,transparent_1px)] [background-size:20px_20px] -z-10" />
       
@@ -40,18 +35,14 @@ const Hero = () => {
             Transform your documents with just a few clicks.
           </p>
           
-          <a 
+          <Button 
             ref={startButtonRef}
-            href="#tools-section" 
-            onClick={(e) => {
-              e.preventDefault();
-              scrollToTools();
-            }}
-            className="btn-primary inline-flex items-center animate-fade-in" 
+            onClick={scrollToTools}
+            className="animate-fade-in" 
             style={{ animationDelay: '0.2s' }}
           >
             Start Using
-          </a>
+          </Button>
         </div>
       </div>
     </section>

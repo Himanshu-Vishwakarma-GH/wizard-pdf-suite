@@ -21,7 +21,7 @@ const ToolCard = ({ title, description, icon, path }: ToolCardProps) => {
           {icon}
         </div>
       </div>
-      <h3 className="text-xl font-semibold mb-2 text-foreground/90">{title}</h3>
+      <h3 className="text-xl font-semibold mb-2 text-primary">{title}</h3>
       <p className="text-muted-foreground text-center mb-4 transition-colors duration-300 
                   group-hover:text-foreground">
         {description}
