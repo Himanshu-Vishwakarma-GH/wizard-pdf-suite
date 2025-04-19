@@ -3,19 +3,25 @@ import { useState, useRef, useCallback } from 'react';
 import { FileText, X, Upload, FileUp, FileDown } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { usePdfOperations } from '@/hooks/usePdfOperations';
+import { Progress } from "@/components/ui/progress";
 
 type UploadedFile = {
   id: string;
   file: File;
-  preview?: string;
 };
 
 const MergePDF = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [mergedFileUrl, setMergedFileUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { 
+    processFiles, 
+    isProcessing, 
+    progress, 
+    result, 
+    reset: resetOperation 
+  } = usePdfOperations('merge');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -110,7 +116,7 @@ const MergePDF = () => {
     setFiles(files.filter(file => file.id !== id));
   };
   
-  const handleMerge = () => {
+  const handleMerge = async () => {
     if (files.length < 2) {
       toast({
         title: "Not enough files",
@@ -120,24 +126,16 @@ const MergePDF = () => {
       return;
     }
     
-    setIsProcessing(true);
+    // Extract the actual File objects
+    const fileObjects = files.map(f => f.file);
     
-    // Simulate PDF merging process
-    setTimeout(() => {
-      // In a real application, this would be an API call to merge PDFs
-      setIsProcessing(false);
-      setMergedFileUrl("demo-merged-file.pdf"); // Mock URL
-      
-      toast({
-        title: "PDFs merged successfully!",
-        description: "Your merged PDF is ready to download.",
-      });
-    }, 2000);
+    // Process the files using our hook
+    await processFiles(fileObjects);
   };
   
   const resetProcess = () => {
     setFiles([]);
-    setMergedFileUrl(null);
+    resetOperation();
   };
   
   // Helper function to reorder files (drag and drop)
@@ -161,6 +159,17 @@ const MergePDF = () => {
     moveFile(fromIndex, toIndex);
   };
 
+  const downloadMergedFile = () => {
+    if (!result?.resultUrl) return;
+    
+    window.open(result.resultUrl, '_blank');
+    
+    toast({
+      title: "Download started",
+      description: "Your merged PDF is being downloaded.",
+    });
+  };
+
   return (
     <div className="container-custom py-12">
       <div className="max-w-4xl mx-auto">
@@ -171,16 +180,19 @@ const MergePDF = () => {
           Combine multiple PDF documents into a single file. Upload your PDFs, arrange them in your desired order, and merge.
         </p>
         
-        {mergedFileUrl ? (
+        {result?.success ? (
           <div className="glass-card p-8 text-center">
-            <FileText className="w-16 h-16 text-primary mx-auto mb-4 neon-text" />
+            <FileText className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-2xl font-semibold mb-2 text-foreground/90">Your PDF is Ready!</h2>
             <p className="text-foreground/80 mb-6">
               Your PDF files have been successfully merged.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-primary hover:bg-primary/90 neon-border">
+              <Button 
+                className="bg-primary hover:bg-primary/90"
+                onClick={downloadMergedFile}
+              >
                 <FileDown className="mr-2 h-4 w-4" /> Download PDF
               </Button>
               <Button 
@@ -201,12 +213,12 @@ const MergePDF = () => {
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
               >
-                <Upload className="w-12 h-12 text-primary mb-4 group-hover:neon-text transition-all" />
+                <Upload className="w-12 h-12 text-primary mb-4 group-hover:scale-110 transition-all" />
                 <h3 className="text-xl font-semibold mb-2">Upload PDF Files</h3>
                 <p className="text-foreground/70 text-center mb-4">
                   Drag and drop PDF files here, or click to browse
                 </p>
-                <Button className="bg-primary hover:bg-primary/90 neon-border">
+                <Button className="bg-primary hover:bg-primary/90">
                   <FileUp className="mr-2 h-4 w-4" /> Select Files
                 </Button>
                 <input 
@@ -223,7 +235,7 @@ const MergePDF = () => {
                 <div className="flex flex-wrap gap-4 mb-6">
                   <Button
                     onClick={() => fileInputRef.current?.click()}
-                    className="bg-primary hover:bg-primary/90 neon-border"
+                    className="bg-primary hover:bg-primary/90"
                   >
                     <FileUp className="mr-2 h-4 w-4" /> Add More Files
                   </Button>
@@ -278,9 +290,16 @@ const MergePDF = () => {
                   </div>
                 </div>
                 
+                {isProcessing && (
+                  <div className="my-4">
+                    <p className="text-center mb-2">Processing...</p>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                )}
+                
                 <div className="text-center pt-6">
                   <Button 
-                    className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg neon-border"
+                    className="bg-primary hover:bg-primary/90 px-8 py-6 text-lg"
                     disabled={files.length < 2 || isProcessing}
                     onClick={handleMerge}
                   >

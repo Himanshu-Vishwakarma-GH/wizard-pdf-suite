@@ -1,11 +1,11 @@
-
 import { useState, useRef } from 'react';
 import { FileText, X, Upload, FileUp, FileDown, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
+import { usePdfOperations } from '@/hooks/usePdfOperations';
 
 type UploadedFile = {
   id: string;
@@ -18,11 +18,16 @@ type CompressionLevel = 'low' | 'medium' | 'high';
 
 const CompressPDF = () => {
   const [files, setFiles] = useState<UploadedFile[]>([]);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [compressionLevel, setCompressionLevel] = useState<CompressionLevel>('medium');
-  const [compressionComplete, setCompressionComplete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { 
+    processFiles, 
+    isProcessing, 
+    progress, 
+    result, 
+    reset: resetOperation 
+  } = usePdfOperations('compress');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = e.target.files;
@@ -119,7 +124,7 @@ const CompressPDF = () => {
     setFiles(files.filter(file => file.id !== id));
   };
   
-  const handleCompress = () => {
+  const handleCompress = async () => {
     if (files.length === 0) {
       toast({
         title: "No files to compress",
@@ -129,75 +134,31 @@ const CompressPDF = () => {
       return;
     }
     
-    setIsProcessing(true);
+    // Extract the actual File objects and create options object
+    const fileObjects = files.map(f => f.file);
+    const options = {
+      compressionLevel
+    };
     
-    // Simulate compression process
-    setTimeout(() => {
-      // Calculate simulated compressed sizes
-      const compressedFiles = files.map(file => {
-        // Simulate different compression rates based on level
-        let compressionRate;
-        switch (compressionLevel) {
-          case 'low':
-            compressionRate = 0.9; // 10% reduction
-            break;
-          case 'medium':
-            compressionRate = 0.7; // 30% reduction
-            break;
-          case 'high':
-            compressionRate = 0.5; // 50% reduction
-            break;
-        }
-        
-        return {
-          ...file,
-          compressedSize: Math.floor(file.originalSize * compressionRate)
-        };
-      });
-      
-      setFiles(compressedFiles);
-      setIsProcessing(false);
-      setCompressionComplete(true);
-      
-      const totalOriginal = files.reduce((sum, file) => sum + file.originalSize, 0);
-      const totalCompressed = compressedFiles.reduce((sum, file) => sum + (file.compressedSize || 0), 0);
-      const percentReduction = ((totalOriginal - totalCompressed) / totalOriginal * 100).toFixed(1);
-      
-      toast({
-        title: "Compression complete!",
-        description: `Reduced by ${percentReduction}% (${formatFileSize(totalOriginal)} → ${formatFileSize(totalCompressed)})`,
-      });
-    }, 2000);
+    // Process the files using our hook
+    await processFiles(fileObjects, options);
   };
   
   const downloadCompressedPDF = () => {
-    // Create a blob to enable actual download
-    const blob = new Blob(['Compressed PDF content would go here'], { type: 'application/pdf' });
-    const url = URL.createObjectURL(blob);
+    if (!result?.resultUrl) return;
     
-    // Create an anchor element and trigger download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = files.length === 1 
-      ? `compressed-${files[0].file.name}` 
-      : "compressed-files.zip";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up
-    URL.revokeObjectURL(url);
+    window.open(result.resultUrl, '_blank');
     
     toast({
       title: "Download started",
-      description: "Your compressed file(s) are being downloaded.",
+      description: "Your compressed PDF is being downloaded.",
     });
   };
   
   const resetProcess = () => {
     setFiles([]);
     setCompressionLevel('medium');
-    setCompressionComplete(false);
+    resetOperation();
   };
   
   const formatFileSize = (bytes: number) => {
@@ -206,18 +167,6 @@ const CompressPDF = () => {
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
   
-  const getTotalReduction = () => {
-    const totalOriginal = files.reduce((sum, file) => sum + file.originalSize, 0);
-    const totalCompressed = files.reduce((sum, file) => sum + (file.compressedSize || 0), 0);
-    
-    if (totalCompressed && totalOriginal > totalCompressed) {
-      const percentage = ((totalOriginal - totalCompressed) / totalOriginal * 100).toFixed(1);
-      return `${percentage}%`;
-    }
-    
-    return '0%';
-  };
-
   return (
     <div className="container-custom py-12">
       <div className="max-w-4xl mx-auto">
@@ -226,17 +175,17 @@ const CompressPDF = () => {
           Reduce the size of your PDF files while maintaining quality. Perfect for sharing, uploading, or storing.
         </p>
         
-        {compressionComplete ? (
+        {result?.success ? (
           <div className="text-center py-10 border-2 border-dashed border-primary/30 rounded-xl">
             <CheckCircle className="w-16 h-16 text-primary mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Compression Complete!</h2>
             <p className="text-muted-foreground mb-6">
-              Reduced by {getTotalReduction()}
+              Your PDF has been compressed and is ready to download
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button className="bg-primary hover:bg-primary-hover" onClick={downloadCompressedPDF}>
-                <FileDown className="mr-2 h-4 w-4" /> Download {files.length > 1 ? 'Files' : 'PDF'}
+                <FileDown className="mr-2 h-4 w-4" /> Download Compressed PDF
               </Button>
               <Button variant="outline" onClick={resetProcess}>
                 Start Over
@@ -309,15 +258,6 @@ const CompressPDF = () => {
                           <p className="font-medium">{file.file.name}</p>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <span>{formatFileSize(file.originalSize)}</span>
-                            {file.compressedSize && (
-                              <>
-                                <span className="mx-2">→</span>
-                                <span className="text-green-600 font-medium">{formatFileSize(file.compressedSize)}</span>
-                                <span className="ml-2 text-green-600">
-                                  (-{((file.originalSize - file.compressedSize) / file.originalSize * 100).toFixed(1)}%)
-                                </span>
-                              </>
-                            )}
                           </div>
                         </div>
                         <button
@@ -371,6 +311,13 @@ const CompressPDF = () => {
                     </div>
                   </RadioGroup>
                 </div>
+                
+                {isProcessing && (
+                  <div className="my-4">
+                    <p className="text-center mb-2">Compressing...</p>
+                    <Progress value={progress} className="h-2" />
+                  </div>
+                )}
                 
                 <div className="text-center pt-6">
                   <Button 
