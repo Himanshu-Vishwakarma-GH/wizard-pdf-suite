@@ -1,1 +1,5 @@
+
 project_id = "hvxevtqyqyvhdzudltya"
+
+[functions.pdf-merge]
+verify_jwt = false
