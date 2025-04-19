@@ -1,0 +1,293 @@
+
+import { useState, useRef, useCallback } from 'react';
+import { FileText, X, Upload, FileUp, FileDown } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+
+type UploadedFile = {
+  id: string;
+  file: File;
+  preview?: string;
+};
+
+const MergePDF = () => {
+  const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [mergedFileUrl, setMergedFileUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = e.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    const newFiles: UploadedFile[] = [];
+    
+    Array.from(selectedFiles).forEach((file) => {
+      // Check if file is a PDF
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a PDF file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check file size (limit to 10MB for demo)
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds the 10MB size limit.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      newFiles.push({
+        id: crypto.randomUUID(),
+        file,
+      });
+    });
+    
+    if (newFiles.length > 0) {
+      setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+      
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+  
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+  
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const droppedFiles = e.dataTransfer.files;
+    if (!droppedFiles || droppedFiles.length === 0) return;
+    
+    const newFiles: UploadedFile[] = [];
+    
+    Array.from(droppedFiles).forEach((file) => {
+      // Validate file type
+      if (file.type !== 'application/pdf') {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a PDF file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Check file size
+      if (file.size > 10 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds the 10MB size limit.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      newFiles.push({
+        id: crypto.randomUUID(),
+        file,
+      });
+    });
+    
+    if (newFiles.length > 0) {
+      setFiles((prevFiles) => [...prevFiles, ...newFiles]);
+    }
+  };
+  
+  const removeFile = (id: string) => {
+    setFiles(files.filter(file => file.id !== id));
+  };
+  
+  const handleMerge = () => {
+    if (files.length < 2) {
+      toast({
+        title: "Not enough files",
+        description: "Please upload at least 2 PDF files to merge.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsProcessing(true);
+    
+    // Simulate PDF merging process
+    setTimeout(() => {
+      // In a real application, this would be an API call to merge PDFs
+      setIsProcessing(false);
+      setMergedFileUrl("demo-merged-file.pdf"); // Mock URL
+      
+      toast({
+        title: "PDFs merged successfully!",
+        description: "Your merged PDF is ready to download.",
+      });
+    }, 2000);
+  };
+  
+  const resetProcess = () => {
+    setFiles([]);
+    setMergedFileUrl(null);
+  };
+  
+  // Helper function to reorder files (drag and drop)
+  const moveFile = (fromIndex: number, toIndex: number) => {
+    const updatedFiles = [...files];
+    const [movedFile] = updatedFiles.splice(fromIndex, 1);
+    updatedFiles.splice(toIndex, 0, movedFile);
+    setFiles(updatedFiles);
+  };
+  
+  const onDragStart = (e: React.DragEvent, index: number) => {
+    e.dataTransfer.setData('index', index.toString());
+  };
+  
+  const onDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  
+  const onDrop = (e: React.DragEvent, toIndex: number) => {
+    const fromIndex = Number(e.dataTransfer.getData('index'));
+    moveFile(fromIndex, toIndex);
+  };
+
+  return (
+    <div className="container-custom py-12">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Merge PDF Files</h1>
+        <p className="text-muted-foreground mb-8">
+          Combine multiple PDF documents into a single file. Upload your PDFs, arrange them in your desired order, and merge.
+        </p>
+        
+        {mergedFileUrl ? (
+          <div className="text-center py-10 border-2 border-dashed border-primary/30 rounded-xl">
+            <FileText className="w-16 h-16 text-primary mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Your PDF is Ready!</h2>
+            <p className="text-muted-foreground mb-6">
+              Your PDF files have been successfully merged.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button className="bg-primary hover:bg-primary-hover">
+                <FileDown className="mr-2 h-4 w-4" /> Download PDF
+              </Button>
+              <Button variant="outline" onClick={resetProcess}>
+                Start Over
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {files.length === 0 ? (
+              <div 
+                className="upload-area cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+              >
+                <Upload className="w-12 h-12 text-primary mb-4" />
+                <h3 className="text-xl font-semibold mb-2">Upload PDF Files</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  Drag and drop PDF files here, or click to browse
+                </p>
+                <Button className="bg-primary hover:bg-primary-hover">
+                  <FileUp className="mr-2 h-4 w-4" /> Select Files
+                </Button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  multiple
+                  accept=".pdf" 
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex flex-wrap gap-4 mb-6">
+                  <Button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="bg-primary hover:bg-primary-hover"
+                  >
+                    <FileUp className="mr-2 h-4 w-4" /> Add More Files
+                  </Button>
+                  <Button variant="outline" onClick={resetProcess}>
+                    Reset
+                  </Button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    multiple
+                    accept=".pdf" 
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
+                
+                <div 
+                  className="border rounded-xl p-4 bg-white shadow-sm"
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  <h3 className="font-semibold mb-4">
+                    PDF Files ({files.length})
+                  </h3>
+                  
+                  <div className="space-y-2">
+                    {files.map((file, index) => (
+                      <div 
+                        key={file.id}
+                        className="flex items-center p-3 bg-secondary rounded-lg"
+                        draggable
+                        onDragStart={(e) => onDragStart(e, index)}
+                        onDragOver={onDragOver}
+                        onDrop={(e) => onDrop(e, index)}
+                      >
+                        <FileText className="h-6 w-6 text-primary mr-3" />
+                        <div className="flex-1 truncate">
+                          <p className="font-medium">{file.file.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {(file.file.size / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFile(file.id)}
+                          className="p-1 rounded-full hover:bg-gray-200 transition-colors"
+                          aria-label="Remove file"
+                        >
+                          <X className="h-5 w-5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                
+                <div className="text-center pt-6">
+                  <Button 
+                    className="bg-primary hover:bg-primary-hover px-8 py-6 text-lg"
+                    disabled={files.length < 2 || isProcessing}
+                    onClick={handleMerge}
+                  >
+                    {isProcessing ? "Processing..." : "Merge PDFs"}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MergePDF;
