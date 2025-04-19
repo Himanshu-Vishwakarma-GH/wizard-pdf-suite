@@ -3,3 +3,6 @@ project_id = "hvxevtqyqyvhdzudltya"
 
 [functions.pdf-merge]
 verify_jwt = false
+
+[functions.pdf-compress]
+verify_jwt = false
