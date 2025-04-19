@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { FileText, X, Upload, FileUp, FileDown, CheckCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
@@ -35,7 +34,6 @@ const ConvertToPDF = () => {
     const newFiles: UploadedFile[] = [];
     
     Array.from(selectedFiles).forEach((file) => {
-      // Check if file is a supported type
       const acceptedTypes = [
         'image/jpeg', 
         'image/png', 
@@ -52,7 +50,6 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Check file size (limit to 10MB for demo)
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -62,7 +59,6 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Determine file type for preview handling - explicitly cast as UploadedFile type
       const fileType = file.type.startsWith('image/') ? 'image' as const : 'document' as const;
       
       const newFile: UploadedFile = {
@@ -71,7 +67,6 @@ const ConvertToPDF = () => {
         type: fileType
       };
       
-      // Create preview for images
       if (fileType === 'image') {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -94,7 +89,6 @@ const ConvertToPDF = () => {
     if (newFiles.length > 0) {
       setFiles((prevFiles) => [...prevFiles, ...newFiles]);
       
-      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -116,7 +110,6 @@ const ConvertToPDF = () => {
     const newFiles: UploadedFile[] = [];
     
     Array.from(droppedFiles).forEach((file) => {
-      // Check if file is a supported type
       const acceptedTypes = [
         'image/jpeg', 
         'image/png', 
@@ -133,7 +126,6 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Check file size
       if (file.size > 10 * 1024 * 1024) {
         toast({
           title: "File too large",
@@ -143,7 +135,6 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Determine file type for preview handling - explicitly cast as UploadedFile type
       const fileType = file.type.startsWith('image/') ? 'image' as const : 'document' as const;
       
       const newFile: UploadedFile = {
@@ -152,7 +143,6 @@ const ConvertToPDF = () => {
         type: fileType
       };
       
-      // Create preview for images
       if (fileType === 'image') {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -193,10 +183,11 @@ const ConvertToPDF = () => {
     
     setIsProcessing(true);
     
-    // Simulate PDF conversion process
     setTimeout(() => {
       setIsProcessing(false);
-      setConvertedFileUrl("demo-converted-file.pdf"); // Mock URL
+      const blob = new Blob(['PDF content would go here in real implementation'], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      setConvertedFileUrl(url);
       
       toast({
         title: "Conversion complete!",
@@ -205,7 +196,26 @@ const ConvertToPDF = () => {
     }, 2000);
   };
   
+  const downloadPDF = () => {
+    if (!convertedFileUrl) return;
+    
+    const link = document.createElement('a');
+    link.href = convertedFileUrl;
+    link.download = "converted-document.pdf";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Download started",
+      description: "Your PDF is being downloaded.",
+    });
+  };
+  
   const resetProcess = () => {
+    if (convertedFileUrl) {
+      URL.revokeObjectURL(convertedFileUrl);
+    }
     setFiles([]);
     setConvertedFileUrl(null);
     setOrientation('portrait');
@@ -245,7 +255,7 @@ const ConvertToPDF = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button className="bg-primary hover:bg-primary-hover">
+              <Button className="bg-primary hover:bg-primary-hover" onClick={downloadPDF}>
                 <FileDown className="mr-2 h-4 w-4" /> Download PDF
               </Button>
               <Button variant="outline" onClick={resetProcess}>
