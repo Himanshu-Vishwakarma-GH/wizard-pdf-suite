@@ -1,21 +1,29 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Get environment variables or use default values for development
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
+// Check if environment variables are missing
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables');
+  console.error('Missing Supabase environment variables. Make sure to set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Supabase secrets.');
 }
 
-export const supabase = createClient(
-  supabaseUrl || '',
-  supabaseAnonKey || ''
-);
+// Use Supabase public URLs as fallback when env vars are not set
+// This will allow the app to build but functions might not work correctly
+const url = supabaseUrl || 'https://placeholder-url.supabase.co';
+const key = supabaseAnonKey || 'placeholder-key';
+
+export const supabase = createClient(url, key);
 
 // File upload helper
 export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
   try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration is missing. Please check your environment variables.');
+    }
+    
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `${folderName}/${fileName}`;
     
@@ -39,6 +47,10 @@ export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
 // File deletion helper
 export const deletePDF = async (filePath: string) => {
   try {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      throw new Error('Supabase configuration is missing. Please check your environment variables.');
+    }
+    
     const { error } = await supabase.storage
       .from('pdfs')
       .remove([filePath]);
@@ -53,6 +65,11 @@ export const deletePDF = async (filePath: string) => {
 
 // Get file URL helper
 export const getPdfUrl = (filePath: string) => {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.error('Supabase configuration is missing. Please check your environment variables.');
+    return '';
+  }
+  
   const { data } = supabase.storage
     .from('pdfs')
     .getPublicUrl(filePath);
