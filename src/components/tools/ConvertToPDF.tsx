@@ -62,10 +62,10 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Determine file type for preview handling
-      const fileType = file.type.startsWith('image/') ? 'image' : 'document';
+      // Determine file type for preview handling - explicitly cast as UploadedFile type
+      const fileType = file.type.startsWith('image/') ? 'image' as const : 'document' as const;
       
-      const newFile = {
+      const newFile: UploadedFile = {
         id: crypto.randomUUID(),
         file,
         type: fileType
@@ -143,10 +143,10 @@ const ConvertToPDF = () => {
         return;
       }
       
-      // Determine file type for preview handling
-      const fileType = file.type.startsWith('image/') ? 'image' : 'document';
+      // Determine file type for preview handling - explicitly cast as UploadedFile type
+      const fileType = file.type.startsWith('image/') ? 'image' as const : 'document' as const;
       
-      const newFile = {
+      const newFile: UploadedFile = {
         id: crypto.randomUUID(),
         file,
         type: fileType
