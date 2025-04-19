@@ -9,9 +9,9 @@ interface ToolLayoutProps {
 
 const ToolLayout = ({ children }: ToolLayoutProps) => {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 bg-gradient-to-br from-white to-primary/5">
+      <main className="flex-1 bg-gradient-to-br from-background to-background/95 py-8">
         {children}
       </main>
       <Footer />
