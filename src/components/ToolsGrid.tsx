@@ -1,4 +1,3 @@
-
 import { Link } from 'react-router-dom';
 import { FileText, Scissors, FileDown, RotateCw, Droplet, Lock, Unlock, Merge, File } from 'lucide-react';
 
@@ -11,19 +10,26 @@ type ToolCardProps = {
 
 const ToolCard = ({ title, description, icon, path }: ToolCardProps) => {
   return (
-    <div className="glass-card p-6 flex flex-col items-center">
-      <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-full mb-4">
-        {icon}
+    <Link 
+      to={path} 
+      className="glass-card p-6 flex flex-col items-center group cursor-pointer"
+    >
+      <div className="w-16 h-16 flex items-center justify-center bg-primary/10 rounded-full mb-4 
+                    group-hover:bg-primary/20 transition-all duration-300">
+        <div className="text-primary neon-pulse">
+          {icon}
+        </div>
       </div>
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-muted-foreground text-center mb-4">{description}</p>
-      <Link 
-        to={path} 
-        className="mt-auto px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-hover transition-colors"
-      >
-        Open
-      </Link>
-    </div>
+      <h3 className="text-xl font-semibold mb-2 neon-text">{title}</h3>
+      <p className="text-muted-foreground text-center mb-4 transition-colors duration-300 
+                  group-hover:text-foreground">
+        {description}
+      </p>
+      <div className="mt-auto neon-border px-4 py-2 rounded-lg opacity-0 transform translate-y-2 
+                    transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+        Open Tool
+      </div>
+    </Link>
   );
 };
 
@@ -86,9 +92,9 @@ const ToolsGrid = () => {
   ];
 
   return (
-    <section id="tools-section" className="py-16 bg-white">
+    <section id="tools-section" className="py-16 bg-background/50 backdrop-blur-sm">
       <div className="container-custom">
-        <h2 className="text-3xl font-bold text-center mb-12">Our PDF Tools</h2>
+        <h2 className="text-3xl font-bold text-center mb-12 neon-text">Our PDF Tools</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tools.map((tool) => (
             <ToolCard 
