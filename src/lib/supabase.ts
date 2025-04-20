@@ -1,19 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
 
-// Get environment variables or use default values for development
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 
-// Check if environment variables are missing
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('Missing Supabase environment variables. Make sure to set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your Supabase secrets.');
-}
-
-// Use Supabase public URLs as fallback when env vars are not set
-const url = supabaseUrl || 'https://placeholder-url.supabase.co';
-const key = supabaseAnonKey || 'placeholder-key';
-
-export const supabase = createClient(url, key);
+// Export the supabase client for use in other files
+export const supabase = supabaseClient;
 
 // File upload helper
 export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
@@ -23,13 +12,11 @@ export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
       fileSize: file.size, 
       fileType: file.type 
     });
-
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing. Please check your environment variables.');
-    }
     
     const fileName = `${Date.now()}_${file.name}`;
     const filePath = `${folderName}/${fileName}`;
+    
+    console.log('Attempting upload with path:', filePath);
     
     const { error, data } = await supabase.storage
       .from('pdfs')
@@ -58,10 +45,6 @@ export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
 // File deletion helper
 export const deletePDF = async (filePath: string) => {
   try {
-    if (!supabaseUrl || !supabaseAnonKey) {
-      throw new Error('Supabase configuration is missing. Please check your environment variables.');
-    }
-    
     const { error } = await supabase.storage
       .from('pdfs')
       .remove([filePath]);
@@ -76,11 +59,6 @@ export const deletePDF = async (filePath: string) => {
 
 // Get file URL helper
 export const getPdfUrl = (filePath: string) => {
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('Supabase configuration is missing. Please check your environment variables.');
-    return '';
-  }
-  
   const { data } = supabase.storage
     .from('pdfs')
     .getPublicUrl(filePath);

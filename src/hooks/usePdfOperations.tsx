@@ -22,18 +22,24 @@ export const usePdfOperations = (operation: Operation) => {
     
     try {
       // Step 1: Upload files to Supabase storage
+      setProgress(10);
+      console.log('Starting uploads for operation:', operation);
+      
       const uploadPromises = files.map(file => uploadPDF(file, operation));
       const uploadResults = await Promise.all(uploadPromises);
       
+      console.log('Upload results:', uploadResults);
+      
       const failedUploads = uploadResults.filter(r => !r.success);
       if (failedUploads.length > 0) {
-        throw new Error('Failed to upload one or more files');
+        throw new Error(`Failed to upload one or more files: ${failedUploads.map(f => f.error).join(', ')}`);
       }
       
       // Step 2: Call the appropriate edge function based on operation
       setProgress(30);
       
       const filePaths = uploadResults.map(r => r.filePath);
+      console.log(`Calling ${operation} function with file paths:`, filePaths);
       
       // Call edge function
       const { data, error } = await supabase.functions.invoke(
@@ -41,10 +47,12 @@ export const usePdfOperations = (operation: Operation) => {
         {
           body: {
             filePaths,
-            options
+            ...options
           }
         }
       );
+      
+      console.log(`${operation} function response:`, { data, error });
       
       if (error) throw error;
       
