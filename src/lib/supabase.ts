@@ -4,52 +4,9 @@ import { supabase as supabaseClient } from '@/integrations/supabase/client';
 // Export the supabase client for use in other files
 export const supabase = supabaseClient;
 
-// Check if the pdfs bucket exists, create it if it doesn't
-export const ensurePdfsBucketExists = async () => {
-  try {
-    // Check if bucket exists
-    const { data: buckets, error: listError } = await supabase.storage.listBuckets();
-    
-    if (listError) {
-      console.error('Error checking buckets:', listError);
-      return false;
-    }
-    
-    const pdfsBucketExists = buckets.some(bucket => bucket.name === 'pdfs');
-    
-    if (!pdfsBucketExists) {
-      console.log('pdfs bucket does not exist, attempting to create it');
-      const { error: createError } = await supabase.storage.createBucket('pdfs', {
-        public: true
-      });
-      
-      if (createError) {
-        console.error('Error creating pdfs bucket:', createError);
-        return false;
-      }
-      
-      console.log('pdfs bucket created successfully');
-    } else {
-      console.log('pdfs bucket already exists');
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Unexpected error checking/creating bucket:', error);
-    return false;
-  }
-};
-
-// File upload helper
+// Upload PDF helper with improved error handling and logging
 export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
   try {
-    // First ensure the bucket exists
-    const bucketReady = await ensurePdfsBucketExists();
-    if (!bucketReady) {
-      console.error('Could not ensure pdfs bucket exists');
-      return { success: false, error: 'Storage bucket not available' };
-    }
-    
     console.log('Upload attempt started:', { 
       fileName: file.name, 
       fileSize: file.size, 
@@ -83,8 +40,11 @@ export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
       
     return { success: true, filePath, publicUrl };
   } catch (error) {
-    console.error('Comprehensive upload error:', error);
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown upload error' };
+    console.error('Upload error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown upload error' 
+    };
   }
 };
 
