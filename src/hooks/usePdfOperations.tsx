@@ -1,7 +1,7 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
-import { uploadPDF, supabase } from '@/lib/supabase';
+import { uploadPDF, supabase, ensurePdfsBucketExists } from '@/lib/supabase';
 
 type Operation = 'merge' | 'split' | 'compress' | 'convert-to' | 'convert-from' | 'rotate' | 'watermark' | 'protect' | 'unlock';
 
@@ -14,6 +14,25 @@ export const usePdfOperations = (operation: Operation) => {
     error?: string;
   } | null>(null);
   const { toast } = useToast();
+  
+  // Check/create bucket on component mount
+  useEffect(() => {
+    const checkBucket = async () => {
+      console.log('Checking for pdfs storage bucket');
+      const bucketReady = await ensurePdfsBucketExists();
+      if (!bucketReady) {
+        toast({
+          title: "Storage Setup Issue",
+          description: "Could not set up storage for PDF files. Some features may not work.",
+          variant: "destructive"
+        });
+      } else {
+        console.log('Storage bucket ready for operation:', operation);
+      }
+    };
+    
+    checkBucket();
+  }, [toast, operation]);
 
   const processFiles = async (files: File[], options: any = {}) => {
     setIsProcessing(true);
@@ -24,6 +43,12 @@ export const usePdfOperations = (operation: Operation) => {
       // Step 1: Upload files to Supabase storage
       setProgress(10);
       console.log('Starting uploads for operation:', operation);
+      
+      // Ensure bucket exists before upload attempt
+      const bucketReady = await ensurePdfsBucketExists();
+      if (!bucketReady) {
+        throw new Error('PDF storage is not available. Please try again later.');
+      }
       
       const uploadPromises = files.map(file => uploadPDF(file, operation));
       const uploadResults = await Promise.all(uploadPromises);

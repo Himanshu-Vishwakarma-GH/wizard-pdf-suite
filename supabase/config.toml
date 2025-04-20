@@ -16,3 +16,14 @@ verify_jwt = false
 [functions.pdf-rotate]
 verify_jwt = false
 
+[functions.pdf-protect]
+verify_jwt = false
+
+[functions.pdf-unlock]
+verify_jwt = false
+
+[functions.pdf-convert-to]
+verify_jwt = false
+
+[functions.pdf-convert-from]
+verify_jwt = false
