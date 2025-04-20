@@ -18,11 +18,22 @@ export const uploadPDF = async (file: File, folderName: string = 'uploads') => {
     
     console.log('Attempting upload with path:', filePath);
     
+    // Fetch existing buckets to verify pdfs bucket exists
+    const { data: buckets, error: bucketsError } = await supabase.storage
+      .listBuckets();
+      
+    console.log('Available buckets:', buckets);
+    
+    if (bucketsError) {
+      console.error('Error fetching buckets:', bucketsError);
+    }
+    
     const { error, data } = await supabase.storage
       .from('pdfs')
       .upload(filePath, file, {
         cacheControl: '3600',
-        upsert: false
+        upsert: false,
+        contentType: 'application/pdf'
       });
     
     console.log('Supabase upload response:', { error, data });
