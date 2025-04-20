@@ -6,6 +6,7 @@ import requests
 import io
 import json
 import uuid
+import logging
 from werkzeug.utils import secure_filename
 import tempfile
 
@@ -14,8 +15,18 @@ import PyPDF2
 from reportlab.pdfgen import canvas
 from PIL import Image
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger('pdf-processor')
+
 app = Flask(__name__)
 CORS(app)
+
+@app.route('/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({"status": "healthy", "service": "pdf-processor"})
 
 @app.route('/process', methods=['POST'])
 def process_pdf():
@@ -29,7 +40,10 @@ def process_pdf():
         supabase_url = data.get('supabaseUrl')
         supabase_key = data.get('supabaseKey')
         
+        logger.info(f"Processing operation: {operation} with {len(file_paths)} files")
+        
         if not operation or not file_paths or not supabase_url or not supabase_key:
+            logger.error("Missing required parameters")
             return jsonify({
                 'success': False,
                 'error': 'Missing required parameters'
@@ -38,11 +52,13 @@ def process_pdf():
         # Download files from Supabase storage
         temp_files = []
         for file_path in file_paths:
+            logger.info(f"Downloading file: {file_path}")
             temp_file = download_from_supabase(supabase_url, supabase_key, file_path)
             if temp_file:
                 temp_files.append(temp_file)
         
         if not temp_files:
+            logger.error("Failed to download files from storage")
             return jsonify({
                 'success': False,
                 'error': 'Failed to download files from storage'
@@ -70,12 +86,14 @@ def process_pdf():
         elif operation == 'convert-from':
             result_file = convert_from_pdf(temp_files[0], options.get('format', 'jpg'))
         else:
+            logger.error(f"Unknown operation: {operation}")
             return jsonify({
                 'success': False,
                 'error': f'Unknown operation: {operation}'
             }), 400
         
         if not result_file:
+            logger.error("Failed to process PDF")
             return jsonify({
                 'success': False,
                 'error': 'Failed to process PDF'
@@ -83,9 +101,11 @@ def process_pdf():
         
         # Upload result to Supabase
         result_path = f"results/{operation}_{uuid.uuid4()}.pdf"
+        logger.info(f"Uploading result to {result_path}")
         upload_result = upload_to_supabase(supabase_url, supabase_key, result_path, result_file)
         
         if not upload_result.get('success'):
+            logger.error(f"Failed to upload result: {upload_result.get('error')}")
             return jsonify({
                 'success': False,
                 'error': upload_result.get('error', 'Failed to upload result')
@@ -95,21 +115,22 @@ def process_pdf():
         for temp_file in temp_files:
             try:
                 os.unlink(temp_file)
-            except:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to clean up temp file {temp_file}: {str(e)}")
         
         try:
             os.unlink(result_file)
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to clean up result file {result_file}: {str(e)}")
         
+        logger.info("Processing completed successfully")
         return jsonify({
             'success': True,
             'resultUrl': upload_result.get('publicUrl')
         })
         
     except Exception as e:
-        print(f"Error processing PDF: {str(e)}")
+        logger.exception(f"Error processing PDF: {str(e)}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -118,6 +139,8 @@ def process_pdf():
 def download_from_supabase(supabase_url, supabase_key, file_path):
     try:
         url = f"{supabase_url}/storage/v1/object/public/pdfs/{file_path}"
+        logger.info(f"Downloading from URL: {url}")
+        
         response = requests.get(
             url,
             headers={
@@ -126,16 +149,17 @@ def download_from_supabase(supabase_url, supabase_key, file_path):
         )
         
         if not response.ok:
-            print(f"Failed to download from Supabase: {response.status_code} - {response.text}")
+            logger.error(f"Failed to download from Supabase: {response.status_code} - {response.text}")
             return None
         
         # Save to temp file
         fp = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
         fp.write(response.content)
         fp.close()
+        logger.info(f"File downloaded to: {fp.name}")
         return fp.name
     except Exception as e:
-        print(f"Error downloading from Supabase: {str(e)}")
+        logger.exception(f"Error downloading from Supabase: {str(e)}")
         return None
 
 def upload_to_supabase(supabase_url, supabase_key, file_path, local_file_path):
@@ -144,6 +168,8 @@ def upload_to_supabase(supabase_url, supabase_key, file_path, local_file_path):
             file_data = f.read()
         
         url = f"{supabase_url}/storage/v1/object/pdfs/{file_path}"
+        logger.info(f"Uploading to URL: {url}")
+        
         response = requests.post(
             url,
             headers={
@@ -154,19 +180,20 @@ def upload_to_supabase(supabase_url, supabase_key, file_path, local_file_path):
         )
         
         if not response.ok:
-            print(f"Failed to upload to Supabase: {response.status_code} - {response.text}")
+            logger.error(f"Failed to upload to Supabase: {response.status_code} - {response.text}")
             return {
                 'success': False,
                 'error': f"Upload failed: {response.text}"
             }
         
         public_url = f"{supabase_url}/storage/v1/object/public/pdfs/{file_path}"
+        logger.info(f"File uploaded successfully. Public URL: {public_url}")
         return {
             'success': True,
             'publicUrl': public_url
         }
     except Exception as e:
-        print(f"Error uploading to Supabase: {str(e)}")
+        logger.exception(f"Error uploading to Supabase: {str(e)}")
         return {
             'success': False,
             'error': str(e)
@@ -175,6 +202,7 @@ def upload_to_supabase(supabase_url, supabase_key, file_path, local_file_path):
 # PDF Operations Implementation
 def merge_pdfs(input_files):
     try:
+        logger.info(f"Merging {len(input_files)} PDF files")
         merger = PyPDF2.PdfMerger()
         
         for file in input_files:
@@ -187,11 +215,12 @@ def merge_pdfs(input_files):
         
         return output.name
     except Exception as e:
-        print(f"Error merging PDFs: {str(e)}")
+        logger.exception(f"Error merging PDFs: {str(e)}")
         return None
 
 def split_pdf(input_file, pages):
     try:
+        logger.info(f"Splitting PDF, extracting pages: {pages}")
         reader = PyPDF2.PdfReader(input_file)
         writer = PyPDF2.PdfWriter()
         
@@ -209,16 +238,18 @@ def split_pdf(input_file, pages):
         
         return output.name
     except Exception as e:
-        print(f"Error splitting PDF: {str(e)}")
+        logger.exception(f"Error splitting PDF: {str(e)}")
         return None
 
 def compress_pdf(input_file):
     # Placeholder for actual compression logic
     # For real compression, you might need more specialized libraries
+    logger.info("Compression operation requested (placeholder implementation)")
     return input_file
 
 def rotate_pdf(input_file, angle):
     try:
+        logger.info(f"Rotating PDF by {angle} degrees")
         reader = PyPDF2.PdfReader(input_file)
         writer = PyPDF2.PdfWriter()
         
@@ -232,11 +263,12 @@ def rotate_pdf(input_file, angle):
         
         return output.name
     except Exception as e:
-        print(f"Error rotating PDF: {str(e)}")
+        logger.exception(f"Error rotating PDF: {str(e)}")
         return None
 
 def add_watermark(input_file, watermark_text):
     try:
+        logger.info(f"Adding watermark text: {watermark_text}")
         # Create watermark
         watermark_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
         c = canvas.Canvas(watermark_file.name)
@@ -270,11 +302,12 @@ def add_watermark(input_file, watermark_text):
         
         return output.name
     except Exception as e:
-        print(f"Error adding watermark: {str(e)}")
+        logger.exception(f"Error adding watermark: {str(e)}")
         return None
 
 def protect_pdf(input_file, password):
     try:
+        logger.info("Protecting PDF with password")
         reader = PyPDF2.PdfReader(input_file)
         writer = PyPDF2.PdfWriter()
         
@@ -289,11 +322,12 @@ def protect_pdf(input_file, password):
         
         return output.name
     except Exception as e:
-        print(f"Error protecting PDF: {str(e)}")
+        logger.exception(f"Error protecting PDF: {str(e)}")
         return None
 
 def unlock_pdf(input_file, password):
     try:
+        logger.info("Unlocking PDF")
         reader = PyPDF2.PdfReader(input_file)
         
         if reader.is_encrypted:
@@ -310,18 +344,21 @@ def unlock_pdf(input_file, password):
         
         return output.name
     except Exception as e:
-        print(f"Error unlocking PDF: {str(e)}")
+        logger.exception(f"Error unlocking PDF: {str(e)}")
         return None
 
 def convert_to_pdf(input_file):
     # Placeholder for actual conversion logic
     # For real conversion, you would use libraries specific to the input format
+    logger.info("Convert-to-PDF operation requested (placeholder implementation)")
     return input_file
 
 def convert_from_pdf(input_file, format):
     # Placeholder for actual conversion logic
     # For real conversion, you might need specialized libraries like pdf2image
+    logger.info(f"Convert-from-PDF to {format} requested (placeholder implementation)")
     return input_file
 
 if __name__ == '__main__':
+    logger.info("Starting PDF processing server on port 8000")
     app.run(host='0.0.0.0', port=8000)

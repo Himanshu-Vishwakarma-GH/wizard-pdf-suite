@@ -11,3 +11,11 @@ VALUES (
   '(bucket_id = ''pdfs''::text)',
   'pdfs'
 ) ON CONFLICT (name, bucket_id) DO NOTHING;
+
+-- Create policy for authenticated uploads
+INSERT INTO storage.policies (name, definition, bucket_id)
+VALUES (
+  'Authenticated Users Upload',
+  '(bucket_id = ''pdfs''::text) AND (auth.role() = ''authenticated''::text)',
+  'pdfs'
+) ON CONFLICT (name, bucket_id) DO NOTHING;

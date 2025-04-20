@@ -6,8 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Change this to your actual Python backend URL when it's deployed
-const PYTHON_BACKEND_URL = "https://your-python-backend-url.com";
+// Update this to your actual Python backend URL when it's deployed
+// Default to localhost for development
+const PYTHON_BACKEND_URL = "http://localhost:8000";
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -38,7 +39,9 @@ serve(async (req) => {
     });
     
     if (!response.ok) {
-      throw new Error(`Python backend returned error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`Python backend error (${response.status}):`, errorText);
+      throw new Error(`Python backend returned error: ${response.status} - ${errorText}`);
     }
     
     const result = await response.json();
@@ -52,7 +55,8 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Unknown error in PDF processing'
+        error: error.message || 'Unknown error in PDF processing',
+        details: error.stack || 'No stack trace available'
       }),
       {
         status: 500,
