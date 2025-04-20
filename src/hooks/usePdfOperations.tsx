@@ -35,24 +35,25 @@ export const usePdfOperations = (operation: Operation) => {
         throw new Error(`Failed to upload one or more files: ${failedUploads.map(f => f.error).join(', ')}`);
       }
       
-      // Step 2: Call the appropriate edge function based on operation
+      // Step 2: Call the Python bridge edge function
       setProgress(30);
       
       const filePaths = uploadResults.map(r => r.filePath!);
-      console.log(`Calling ${operation} function with file paths:`, filePaths);
+      console.log(`Calling python-pdf-bridge function with operation: ${operation}, file paths:`, filePaths);
       
-      // Call edge function
+      // Call Python bridge edge function
       const { data, error } = await supabase.functions.invoke(
-        `pdf-${operation}`,
+        `python-pdf-bridge`,
         {
           body: {
+            operation,
             filePaths,
-            ...options
+            options
           }
         }
       );
       
-      console.log(`${operation} function response:`, { data, error });
+      console.log(`Python PDF bridge response:`, { data, error });
       
       if (error) throw error;
       

@@ -28,5 +28,8 @@ verify_jwt = false
 [functions.pdf-convert-from]
 verify_jwt = false
 
+[functions.python-pdf-bridge]
+verify_jwt = false
+
 [storage.pdfs]
 public = true
