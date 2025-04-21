@@ -48,7 +48,10 @@ export const usePdfOperations = (operation: Operation) => {
           body: {
             operation,
             filePaths,
-            options
+            options: {
+              ...options,
+              apiProvider: 'ilovepdf' // Tell the backend to use iLovePDF API
+            }
           }
         }
       );
